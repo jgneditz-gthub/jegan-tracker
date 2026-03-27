@@ -6,6 +6,7 @@ from kivy.uix.button import Button
 from kivy.uix.spinner import Spinner
 import datetime
 
+
 class ExpenseApp(App):
     def build(self):
         self.expenses = []
@@ -13,7 +14,8 @@ class ExpenseApp(App):
 
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
 
-        self.amount_input = TextInput(hint_text="Enter amount", multiline=False)
+        self.amount_input = TextInput(hint_text="Enter amount", multiline=False,
+                                      input_filter='float')
         layout.add_widget(self.amount_input)
 
         self.category = Spinner(
@@ -26,7 +28,7 @@ class ExpenseApp(App):
         btn.bind(on_press=self.add_expense)
         layout.add_widget(btn)
 
-        self.total_label = Label(text="Total: ₹0")
+        self.total_label = Label(text="Total: \u20b90")
         layout.add_widget(self.total_label)
 
         self.dashboard = Label(text="No data yet")
@@ -43,11 +45,14 @@ class ExpenseApp(App):
 
         try:
             amt = float(self.amount_input.text)
+            if amt <= 0:
+                self.total_label.text = "Amount must be positive"
+                return
             cat = self.category.text
             self.expenses.append((amt, cat))
             self.amount_input.text = ""
             self.update_ui()
-        except:
+        except ValueError:
             self.total_label.text = "Invalid input"
 
     def update_ui(self):
@@ -57,10 +62,11 @@ class ExpenseApp(App):
         for amt, cat in self.expenses:
             cat_total[cat] = cat_total.get(cat, 0) + amt
 
-        breakdown = "\n".join([f"{k}: ₹{v}" for k, v in cat_total.items()])
+        breakdown = "\n".join([f"{k}: \u20b9{v:.2f}" for k, v in cat_total.items()])
 
-        self.total_label.text = f"Total: ₹{total}"
+        self.total_label.text = f"Total: \u20b9{total:.2f}"
         self.dashboard.text = f"Breakdown:\n{breakdown}"
+
 
 if __name__ == "__main__":
     ExpenseApp().run()
