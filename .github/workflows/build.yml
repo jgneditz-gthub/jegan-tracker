@@ -5,17 +5,21 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # Use 22.04 â€” better compatibility with buildozer/Android toolchain
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
     - name: Install system dependencies
       run: |
-        sudo apt update
-        sudo apt install -y \
-          python3-pip \
+        sudo apt-get update
+        sudo apt-get install -y \
           git \
           zip \
           unzip \
@@ -25,7 +29,12 @@ jobs:
           build-essential \
           libsqlite3-dev \
           zlib1g-dev \
-          libncurses5
+          libncurses5 \
+          autoconf \
+          automake \
+          libtool \
+          pkg-config \
+          cmake
 
     - name: Install Python dependencies
       run: |
@@ -33,23 +42,85 @@ jobs:
         pip install cython==0.29.36
         pip install buildozer kivy
 
-    - name: Initialize buildozer
-      run: |
-        buildozer init || true
+    - name: Cache buildozer global directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildozer
+        key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+        restore-keys: |
+          buildozer-${{ runner.os }}-
 
-    - name: Configure buildozer
+    - name: Cache Android SDK/NDK
+      uses: actions/cache@v4
+      with:
+        path: ~/.android
+        key: android-sdk-${{ runner.os }}
+        restore-keys: |
+          android-sdk-${{ runner.os }}
+
+    - name: Write buildozer.spec
       run: |
-        sed -i 's/title = .*/title = Jegan Tracker/' buildozer.spec
-        sed -i 's/package.name = .*/package.name = jegantracker/' buildozer.spec
-        sed -i 's/package.domain = .*/package.domain = org.test/' buildozer.spec
-        sed -i 's/requirements = .*/requirements = python3,kivy/' buildozer.spec
+        cat > buildozer.spec << 'EOF'
+        [app]
+        title = Jegan Tracker
+        package.name = jegantracker
+        package.domain = org.test
+        source.dir = .
+        source.include_exts = py,png,jpg,kv,atlas
+        version = 1.0
+        requirements = python3,kivy
+        orientation = portrait
+        osx.python_version = 3
+        osx.kivy_version = 1.9.1
+        fullscreen = 0
+        android.permissions = INTERNET
+        android.api = 33
+        android.minapi = 21
+        android.ndk = 25b
+        android.sdk = 33
+        android.ndk_path =
+        android.sdk_path =
+        android.private_storage = True
+        android.accept_sdk_license = True
+        android.arch = arm64-v8a
+        p4a.branch = master
+
+        [buildozer]
+        log_level = 2
+        warn_on_root = 1
+        EOF
+
+    - name: Ensure main.py exists
+      run: |
+        # Rename app file to main.py if it isn't already
+        if [ ! -f main.py ]; then
+          PY_FILE=$(find . -maxdepth 1 -name "*.py" | head -n 1)
+          if [ -n "$PY_FILE" ]; then
+            cp "$PY_FILE" main.py
+          fi
+        fi
+
+    - name: Accept Android SDK licenses
+      run: |
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+        yes | ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
 
     - name: Build APK
       run: |
-        buildozer android debug
+        buildozer android debug 2>&1 | tee build.log
+      env:
+        ANDROID_HOME: ${{ github.workspace }}/.android/sdk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: jegan-tracker-apk
         path: bin/*.apk
+
+    - name: Upload build log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: build.log
