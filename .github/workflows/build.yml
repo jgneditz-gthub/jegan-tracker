@@ -5,14 +5,14 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04  # Use 22.04 â€” better compatibility with buildozer/Android toolchain
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4.2.2
 
     - name: Set up Python 3.10
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v5.4.0
       with:
         python-version: "3.10"
 
@@ -43,7 +43,7 @@ jobs:
         pip install buildozer kivy
 
     - name: Cache buildozer global directory
-      uses: actions/cache@v4
+      uses: actions/cache@v4.2.3
       with:
         path: ~/.buildozer
         key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
@@ -51,7 +51,7 @@ jobs:
           buildozer-${{ runner.os }}-
 
     - name: Cache Android SDK/NDK
-      uses: actions/cache@v4
+      uses: actions/cache@v4.2.3
       with:
         path: ~/.android
         key: android-sdk-${{ runner.os }}
@@ -92,7 +92,6 @@ jobs:
 
     - name: Ensure main.py exists
       run: |
-        # Rename app file to main.py if it isn't already
         if [ ! -f main.py ]; then
           PY_FILE=$(find . -maxdepth 1 -name "*.py" | head -n 1)
           if [ -n "$PY_FILE" ]; then
@@ -112,15 +111,24 @@ jobs:
       env:
         ANDROID_HOME: ${{ github.workspace }}/.android/sdk
 
+    - name: Find and move APK
+      run: |
+        mkdir -p bin
+        find . -name "*.apk" | while read f; do
+          echo "Found APK: $f"
+          cp "$f" bin/
+        done
+        ls -lh bin/
+
     - name: Upload APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4.6.2
       with:
         name: jegan-tracker-apk
         path: bin/*.apk
 
     - name: Upload build log on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4.6.2
       with:
         name: build-log
         path: build.log
