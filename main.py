@@ -8,14 +8,18 @@ import datetime
 
 
 class ExpenseApp(App):
+
     def build(self):
         self.expenses = []
         self.current_day = datetime.date.today()
 
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
 
-        self.amount_input = TextInput(hint_text="Enter amount", multiline=False,
-                                      input_filter='float')
+        self.amount_input = TextInput(
+            hint_text="Enter amount",
+            multiline=False,
+            input_filter='float'
+        )
         layout.add_widget(self.amount_input)
 
         self.category = Spinner(
@@ -28,7 +32,7 @@ class ExpenseApp(App):
         btn.bind(on_press=self.add_expense)
         layout.add_widget(btn)
 
-        self.total_label = Label(text="Total: \u20b90")
+        self.total_label = Label(text="Total: 0.00")
         layout.add_widget(self.total_label)
 
         self.dashboard = Label(text="No data yet")
@@ -62,9 +66,9 @@ class ExpenseApp(App):
         for amt, cat in self.expenses:
             cat_total[cat] = cat_total.get(cat, 0) + amt
 
-        breakdown = "\n".join([f"{k}: \u20b9{v:.2f}" for k, v in cat_total.items()])
+        breakdown = "\n".join([f"{k}: {v:.2f}" for k, v in cat_total.items()])
 
-        self.total_label.text = f"Total: \u20b9{total:.2f}"
+        self.total_label.text = f"Total: {total:.2f}"
         self.dashboard.text = f"Breakdown:\n{breakdown}"
 
 
